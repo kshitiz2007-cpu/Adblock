@@ -10,7 +10,7 @@ activity_target = Path("app/src/main/java/com/orbit/browser/ui/VpnActivity.kt")
 src = main.read_text()
 marker = "NEXUS VPN profile screen overlay"
 if marker not in src:
-    menu_anchor = "            MenuSheet.Item(\n                ID_NEW_TAB, R.drawable.ic_add, getString(R.string.new_tab)),"
+    menu_anchor = "            MenuSheet.Item(ID_NEW_TAB, R.drawable.ic_add, getString(R.string.new_tab)),"
     if menu_anchor not in src:
         raise SystemExit("Menu item insertion anchor not found; aborting.")
     src = src.replace(menu_anchor, "            // NEXUS VPN profile screen overlay\n            MenuSheet.Item(ID_NEXUS_VPN, R.drawable.ic_shield, \"NEXUS VPN\"),\n" + menu_anchor, 1)
