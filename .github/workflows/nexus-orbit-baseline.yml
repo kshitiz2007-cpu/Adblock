@@ -85,4 +85,49 @@ jobs:
           name: NEXUS-Browser-debug-apk
           path: orbit-upstream/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 14      - name: Apply NEXUS blocked-image placeholder patch
+        working-directory: orbit-upstream
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/java/com/orbit/browser/browser/OrbitWebViewClient.kt")
+          s = p.read_text()
+          start = s.find("        /** Görsel engellemeleri için ortak 1x1 saydam GIF yanıtı. */")
+          end = s.find("        /** Akış tüketildiği için yanıt nesnesi", start)
+          if start < 0 or end < 0:
+              raise SystemExit("GIF placeholder boundaries not found; aborting safely")
+          replacement = '''        /** NEXUS branded SVG placeholder for blocked image resources. */
+          private val NEXUS_BLOCKED_IMAGE = ("<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" width=\\\"320\\\" height=\\\"90\\\" viewBox=\\\"0 0 320 90\\\"><rect width=\\\"320\\\" height=\\\"90\\\" rx=\\\"12\\\" fill=\\\"#06291D\\\"/><text x=\\\"24\\\" y=\\\"52\\\" font-family=\\\"sans-serif\\\" font-size=\\\"24\\\" font-weight=\\\"bold\\\" fill=\\\"#39D98A\\\">NEXUS · AD BLOCKED</text></svg>").toByteArray(Charsets.UTF_8)
+
+          '''
+          s = s[:start] + replacement + s[end:]
+          start = s.find("        val BLOCKED_IMAGE: WebResourceResponse")
+          end = s.find("\\n            )", start)
+          if start < 0 or end < 0:
+              raise SystemExit("BLOCKED_IMAGE boundaries not found")
+          end += len("\\n            )")
+          replacement = '''        val BLOCKED_IMAGE: WebResourceResponse
+            get() = WebResourceResponse(
+                "image/svg+xml", "utf-8", 200, "OK",
+                IMAGE_HEADERS, NEXUS_BLOCKED_IMAGE.inputStream()
+            )'''
+          s = s[:start] + replacement + s[end:]
+          p.write_text(s)
+          PY
+      - name: Print build diagnostics
+        run: |
+          java -version
+          echo "NEXUS branch context: ${{ inputs.nexus_branch }}"
+          echo "Orbit source: https://github.com/egeeuzun/orbit.git"
+
+      - name: Build NEXUS Browser debug APK
+        working-directory: orbit-upstream
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload NEXUS Browser APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXUS-Browser-debug-apk
+          path: orbit-upstream/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
           retention-days: 14
