@@ -60,6 +60,8 @@ jobs:
         run: |
           sed -i 's/<string name="app_name">Orbit<\/string>/<string name="app_name">NEXUS Browser<\/string>/' app/src/main/res/values/strings.xml
           sed -i 's/#2563EB/#16A34A/g; s/#60A5FA/#4ADE80/g' app/src/main/res/values/colors.xml
+          # ShieldSheet status and icon accents follow the NEXUS emerald palette.
+          sed -i 's/#16A34A/#39D98A/g; s/#2563EB/#39D98A/g; s/#EA580C/#FFB454/g' app/src/main/java/com/orbit/browser/ui/ShieldSheet.kt
 
       - name: Print build diagnostics
         run: |
