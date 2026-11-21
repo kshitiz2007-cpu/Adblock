@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="22dp" android:paddingTop="18dp" android:paddingEnd="22dp" android:paddingBottom="8dp">
+<ImageView android:layout_width="48dp" android:layout_height="48dp" android:src="@drawable/ic_nexus_shield" android:contentDescription="NEXUS shield"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginStart="12dp">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="NEXUS" android:textColor="#E9FFF3" android:textSize="25sp" android:textStyle="bold" android:letterSpacing="0.06"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="BROWSER • PRIVATE BY DESIGN" android:textColor="#58D993" android:textSize="10sp" android:letterSpacing="0.08"/>
+</LinearLayout></LinearLayout>
