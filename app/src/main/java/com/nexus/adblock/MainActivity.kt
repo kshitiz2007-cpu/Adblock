@@ -35,7 +35,8 @@ private fun NexusDashboard() {
     var refreshing by remember { mutableStateOf(false) }
     var listCount by remember { mutableIntStateOf(0) }
     var ruleCount by remember { mutableIntStateOf(0) }
-    val scope = rememberCoroutineScope()\n    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
     MaterialTheme(colorScheme = darkColorScheme(primary = Mint, background = Ink, surface = Panel)) {
         Surface(color = Ink, modifier = Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -68,22 +69,21 @@ private fun NexusDashboard() {
                 Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Filter lists", color = Color.White, fontWeight = FontWeight.Bold)
-                        Text("• EasyList — ads", color = Color.LightGray)
-                        Text("• EasyPrivacy — trackers", color = Color.LightGray)
-                        Text("• AdGuard Base — general ads", color = Color.LightGray)
+                        Text("EasyList · Ads", color = Color.LightGray)
+                        Text("EasyPrivacy · Tracking protection", color = Color.LightGray)
+                        Text("AdGuard Base · General ads", color = Color.LightGray)
                         Text(refreshStatus, color = if (refreshStatus.startsWith("Update complete")) Mint else Color.LightGray, style = MaterialTheme.typography.bodySmall)
                         Button(enabled = !refreshing, onClick = {
                             refreshing = true
                             refreshStatus = "Downloading filter lists…"
                             scope.launch {
-                                val result = runCatching { FilterListRepository.update(context) }
-                                result.onSuccess {
-                                    listCount = it.lists
-                                    ruleCount = it.ruleCount
-                                    refreshStatus = if (it.lists > 0) "Update complete: ${it.lists} lists" else "Update failed; kept previous rules"
-                                }.onFailure { err ->
-                                    refreshStatus = "Update error: ${err.message ?: "unknown"}"
-                                }
+                                runCatching { FilterListRepository.update(context) }
+                                    .onSuccess { result ->
+                                        listCount = result.lists
+                                        ruleCount = result.ruleCount
+                                        refreshStatus = if (result.lists > 0) "Update complete: ${result.lists} lists" else "Update failed; retained previous filters"
+                                    }
+                                    .onFailure { error -> refreshStatus = "Update error: ${error.message ?: "unknown"}" }
                                 refreshing = false
                             }
                         }, modifier = Modifier.fillMaxWidth()) {
@@ -94,7 +94,7 @@ private fun NexusDashboard() {
                 Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Samsung Internet", color = Color.White, fontWeight = FontWeight.Bold)
-                        Text("Content blocker provider is registered. Samsung validation and device testing are still pending.", color = Color(0xFFFFC66D), style = MaterialTheme.typography.bodySmall)
+                        Text("Content blocker provider registered. Device testing and Samsung validation pending.", color = Color(0xFFFFC66D), style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 Spacer(Modifier.weight(1f))
@@ -102,12 +102,6 @@ private fun NexusDashboard() {
             }
         }
     }
-}
-
-// Small helper so the composable can access the Activity Context for repository work.
-@Composable
-private fun NexusDashboardContext(): android.content.Context {
-    return androidx.compose.ui.platform.LocalContext.current
 }
 
 @Composable
