@@ -69,23 +69,6 @@ jobs:
           # ShieldSheet status and icon accents follow the NEXUS emerald palette.
           sed -i 's/#16A34A/#39D98A/g; s/#2563EB/#39D98A/g; s/#EA580C/#FFB454/g' app/src/main/java/com/orbit/browser/ui/ShieldSheet.kt
 
-      - name: Apply NEXUS blocked-image placeholder patch
-        working-directory: orbit-upstream
-        run: |
-          python3 - <<'PY'
-          import re
-          from pathlib import Path
-          p = Path("app/src/main/java/com/orbit/browser/browser/OrbitWebViewClient.kt")
-          s = p.read_text()
-          replacement = '''        /** NEXUS branded placeholder bytes for blocked image resources. */
-          private val NEXUS_BLOCKED_IMAGE = ("<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" width=\\\"320\\\" height=\\\"90\\\" viewBox=\\\"0 0 320 90\\\"><rect width=\\\"320\\\" height=\\\"90\\\" rx=\\\"12\\\" fill=\\\"#06291D\\\"/><text x=\\\"24\\\" y=\\\"52\\\" font-family=\\\"sans-serif\\\" font-size=\\\"24\\\" font-weight=\\\"bold\\\" fill=\\\"#39D98A\\\">NEXUS · AD BLOCKED</text></svg>").toByteArray(Charsets.UTF_8)
-          '''
-          s, n = re.subn(r'(?s)/\\*\\* Görsel engellemeleri.*?\\*/\\s*private val GIF_1X1 = byteArrayOf\\(.*?\\n\\s*\\)', replacement, s, count=1)
-          if n != 1: raise SystemExit("GIF placeholder block not found")
-          s, n = re.subn(r'(?s)val BLOCKED_IMAGE: WebResourceResponse\\s*get\\(\\) = WebResourceResponse\\(\\s*"image/gif",\\s*"utf-8",\\s*200,\\s*"OK",\\s*IMAGE_HEADERS,\\s*GIF_1X1.inputStream\\(\\)\\s*\\)', 'val BLOCKED_IMAGE: WebResourceResponse\\n            get() = WebResourceResponse("image/svg+xml", "utf-8", 200, "OK", IMAGE_HEADERS, NEXUS_BLOCKED_IMAGE.inputStream())', s, count=1)
-          if n != 1: raise SystemExit("blocked image response not found")
-          p.write_text(s)
-          PY
       - name: Print build diagnostics
         run: |
           java -version
