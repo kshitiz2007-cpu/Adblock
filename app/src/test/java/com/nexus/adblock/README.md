@@ -1,0 +1,1 @@
+Tests for the prototype domain rule engine. Run from Android Studio or with Gradle after adding JUnit dependency.
