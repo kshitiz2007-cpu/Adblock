@@ -31,7 +31,7 @@ replacement = """    // NEXUS Link Integrity Guard: ask before opening a top-lev
         if (request.isForMainFrame && isRawImageDestination(uri)) {
             android.app.AlertDialog.Builder(context)
                 .setTitle("NEXUS Link Integrity")
-                .setMessage("This link opens a raw image or emoji resource, not a typical download page.\n\nDestination:\\n" + uri.toString())
+                .setMessage("This link opens a raw image or emoji resource, not a typical download page. Destination: " + uri.toString())
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Open anyway") { _, _ -> view.post { view.loadUrl(uri.toString()) } }
                 .show()
