@@ -2,35 +2,73 @@ name: NEXUS Browser - Orbit baseline
 
 on:
   workflow_dispatch:
+    inputs:
+      nexus_branch:
+        description: NEXUS branch context
+        required: true
+        default: nexus
+        type: choice
+        options:
+          - nexus
+          - main
 
 permissions:
   contents: read
 
 jobs:
-  baseline:
+  orbit:
+    name: Build NEXUS Browser APK
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - name: Checkout NEXUS branch
         uses: actions/checkout@v4
-      - name: Clone Orbit upstream
+        with:
+          ref: nexus
+
+      - name: Clone Orbit upstream browser source
         run: git clone --depth 1 https://github.com/egeeuzun/orbit.git orbit-upstream
-      - name: Set up Java
+
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
-      - name: Install SDK packages
+
+      - name: Install Android SDK packages
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Build Orbit baseline APK
+
+      - name: Apply NEXUS jungle homepage and teardrop shortcuts
+        run: |
+          cp -r .nexus-overlay/app/src/main/res/drawable/. orbit-upstream/app/src/main/res/drawable/
+          cp -r .nexus-overlay/app/src/main/res/layout/. orbit-upstream/app/src/main/res/layout/
+
+      - name: Apply initial NEXUS branding overlay
         working-directory: orbit-upstream
-        run: ./gradlew assembleDebug --no-daemon
-      - name: Upload baseline APK
+        run: |
+          sed -i 's/<string name="app_name">Orbit<\/string>/<string name="app_name">NEXUS Browser<\/string>/' app/src/main/res/values/strings.xml
+          sed -i 's/#2563EB/#16A34A/g; s/#60A5FA/#4ADE80/g' app/src/main/res/values/colors.xml
+
+      - name: Print build diagnostics
+        run: |
+          java -version
+          echo "NEXUS branch context: ${{ inputs.nexus_branch }}"
+          echo "Orbit source: https://github.com/egeeuzun/orbit.git"
+
+      - name: Build NEXUS Browser debug APK
+        working-directory: orbit-upstream
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload NEXUS Browser APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-orbit-baseline
+          name: NEXUS-Browser-debug-apk
           path: orbit-upstream/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
           retention-days: 14
