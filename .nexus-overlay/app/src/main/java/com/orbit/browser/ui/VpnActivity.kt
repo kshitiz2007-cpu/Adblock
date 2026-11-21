@@ -1,6 +1,5 @@
 package com.orbit.browser.ui
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -10,12 +9,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.setPadding
 
-/**
- * NEXUS VPN profile setup foundation.
- * Import and local profile storage are implemented; tunnel engine is not yet wired.
- */
+/** NEXUS VPN profile manager. No tunnel is claimed until the OpenVPN engine is integrated. */
 class VpnActivity : AppCompatActivity() {
     private lateinit var status: TextView
     private lateinit var profileInfo: TextView
@@ -24,20 +19,43 @@ class VpnActivity : AppCompatActivity() {
     private val profilePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@registerForActivityResult
         try {
-            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        } catch (_: Exception) { }
-        try {
-            val text = contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (!text.contains("client") || !text.contains("remote")) {
-                status.text = "Invalid profile: .ovpn must contain client and remote directives."
+            val profile = contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
+            val parsed = parseProfile(profile)
+            if (parsed.remote == null || !parsed.hasClientDirective) {
+                status.text = "Invalid .ovpn profile: client and remote endpoint are required."
                 return@registerForActivityResult
             }
-            prefs.edit().putString("profile_text", text).putString("profile_name", uri.lastPathSegment ?: "Imported profile").apply()
+            prefs.edit()
+                .putString("profile_text", profile)
+                .putString("profile_name", uri.lastPathSegment?.take(120) ?: "Imported profile")
+                .putString("profile_remote", parsed.remote)
+                .putString("profile_proto", parsed.proto ?: "unspecified")
+                .putBoolean("profile_auth_userpass", parsed.usesUserPass)
+                .putBoolean("profile_cert_auth", parsed.hasInlineCert)
+                .apply()
             updateProfile()
-            status.text = "Profile imported and saved locally. VPN engine integration is the next step."
+            status.text = "Profile validated and saved locally. Tunnel engine is not connected."
         } catch (e: Exception) {
-            status.text = "Could not import profile: ${e.message ?: "file access error"}"
+            status.text = "Profile import failed: ${e.message ?: "file access error"}"
         }
+    }
+
+    private data class ProfileSummary(val remote: String?, val proto: String?, val hasClientDirective: Boolean, val usesUserPass: Boolean, val hasInlineCert: Boolean)
+
+    private fun parseProfile(text: String): ProfileSummary {
+        val lines = text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") && !it.startsWith(";") }.toList()
+        val remoteLine = lines.firstOrNull { it.startsWith("remote ", ignoreCase = true) }
+        val remote = remoteLine?.split(Regex("\\s+"))?.let { parts ->
+            if (parts.size >= 2) parts[1] + (parts.getOrNull(2)?.let { ":$it" } ?: "") else null
+        }
+        val proto = lines.firstOrNull { it.startsWith("proto ", ignoreCase = true) }?.substringAfter(" ")?.trim()
+        return ProfileSummary(
+            remote = remote,
+            proto = proto,
+            hasClientDirective = lines.any { it.equals("client", ignoreCase = true) },
+            usesUserPass = lines.any { it.equals("auth-user-pass", ignoreCase = true) },
+            hasInlineCert = lines.any { it.startsWith("<ca>", true) || it.startsWith("<cert>", true) || it.startsWith("<key>", true) }
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,18 +67,20 @@ class VpnActivity : AppCompatActivity() {
             setPadding(dp(20), dp(24), dp(20), dp(24))
             gravity = Gravity.CENTER_HORIZONTAL
         }
-        root.addView(TextView(this).apply { text = "NEXUS VPN"; textSize = 28f; setTextColor(0xFF10231D.toInt()) })
-        root.addView(TextView(this).apply { text = "OpenVPN profiles"; textSize = 16f; setPadding(0, dp(6), 0, dp(18)) })
-        status = TextView(this).apply { text = "VPN tunnel is not connected."; textSize = 15f; setPadding(dp(12), dp(12), dp(12), dp(12)) }
+        root.addView(TextView(this).apply { text = "NEXUS VPN"; textSize = 28f; setTextColor(0xFF10231D.toInt() })
+        root.addView(TextView(this).apply { text = "OpenVPN profile manager"; textSize = 16f; setPadding(0, dp(6), 0, dp(18)) })
+        status = TextView(this).apply { text = "VPN tunnel: disconnected"; textSize = 15f; setPadding(dp(12), dp(12), dp(12), dp(12)) }
         root.addView(status)
         profileInfo = TextView(this).apply { textSize = 15f; setPadding(dp(12), dp(12), dp(12), dp(18)) }
         root.addView(profileInfo)
-        root.addView(Button(this).apply { text = "Import .ovpn profile"; setOnClickListener { profilePicker.launch(arrayOf("*/*")) } })
+        root.addView(Button(this).apply { text = "Import .ovpn profile"; setOnClickListener { profilePicker.launch(arrayOf("application/octet-stream", "text/plain", "*/*")) } })
         root.addView(Button(this).apply { text = "Remove saved profile"; setOnClickListener {
-            prefs.edit().clear().apply(); updateProfile(); status.text = "Profile removed."
+            prefs.edit().remove("profile_text").remove("profile_name").remove("profile_remote").remove("profile_proto").remove("profile_auth_userpass").remove("profile_cert_auth").apply()
+            updateProfile()
+            status.text = "Saved profile removed."
         } })
         root.addView(TextView(this).apply {
-            text = "Connection controls will be enabled after the OpenVPN engine and Android VPN service are integrated. This screen does not currently route traffic through a VPN."
+            text = "Profile details are stored locally. VPN traffic is not routed yet; OpenVPN engine and Android VPN service integration are pending."
             textSize = 14f
             setPadding(0, dp(18), 0, 0)
         })
@@ -70,7 +90,11 @@ class VpnActivity : AppCompatActivity() {
 
     private fun updateProfile() {
         val name = prefs.getString("profile_name", null)
-        val text = prefs.getString("profile_text", null)
-        profileInfo.text = if (name != null && text != null) "Saved profile: $name\nConfiguration stored on this device." else "No profile imported yet."
+        val remote = prefs.getString("profile_remote", null)
+        val proto = prefs.getString("profile_proto", null)
+        val hasProfile = prefs.getString("profile_text", null) != null
+        profileInfo.text = if (hasProfile) {
+            "Profile: $name\\nServer endpoint: ${remote ?: "unknown"}\\nProtocol: ${proto ?: "unspecified"}\\nAuthentication: ${if (prefs.getBoolean("profile_auth_userpass", false)) "username/password" else if (prefs.getBoolean("profile_cert_auth", false)) "certificate/key" else "profile-defined"}"
+        } else "No profile imported.\\nImport a trusted .ovpn configuration to prepare the VPN profile."
     }
 }
