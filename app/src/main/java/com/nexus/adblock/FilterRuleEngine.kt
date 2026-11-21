@@ -36,6 +36,7 @@ class FilterRuleEngine(rules: Collection<DomainRule> = emptyList()) {
                 candidate?.let { normalizeHost(it) }?.takeIf { it.isNotBlank() && !isIp(it) && it != "localhost" }
                     ?.let { DomainRule(it, RuleAction.BLOCK) }
             }.distinctBy { it.domain }
+            .toList()
 
         fun normalizeHost(hostOrUrl: String): String {
             val trimmed = hostOrUrl.trim().lowercase()
