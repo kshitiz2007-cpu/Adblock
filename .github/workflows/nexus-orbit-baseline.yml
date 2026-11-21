@@ -1,0 +1,36 @@
+name: NEXUS Browser - Orbit baseline
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout NEXUS branch
+        uses: actions/checkout@v4
+      - name: Clone Orbit upstream
+        run: git clone --depth 1 https://github.com/egeeuzun/orbit.git orbit-upstream
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+      - name: Install SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Build Orbit baseline APK
+        working-directory: orbit-upstream
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Upload baseline APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-orbit-baseline
+          path: orbit-upstream/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
