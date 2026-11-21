@@ -1,6 +1,7 @@
 package com.nexus.adblock
 
 import android.os.Bundle
+import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -35,6 +36,12 @@ private fun NexusDashboard() {
     var refreshing by remember { mutableStateOf(false) }
     var listCount by remember { mutableIntStateOf(0) }
     var ruleCount by remember { mutableIntStateOf(0) }
+    var samsungSettingsStatus by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("nexus_filters", android.content.Context.MODE_PRIVATE)
+        listCount = prefs.getInt("active_lists", 0)
+        ruleCount = prefs.getInt("rule_count", 0)
+    }
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
     MaterialTheme(colorScheme = darkColorScheme(primary = Mint, background = Ink, surface = Panel)) {
@@ -95,6 +102,15 @@ private fun NexusDashboard() {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Samsung Internet", color = Color.White, fontWeight = FontWeight.Bold)
                         Text("Content blocker provider registered. Device testing and Samsung validation pending.", color = Color(0xFFFFC66D), style = MaterialTheme.typography.bodySmall)
+                        Button(onClick = {
+                            val intent = Intent("com.samsung.android.sbrowser.contentBlocker.ACTION_SETTING")
+                            runCatching { context.startActivity(intent) }
+                                .onSuccess { samsungSettingsStatus = "Samsung Ad blockers settings opened." }
+                                .onFailure { samsungSettingsStatus = "Samsung Internet did not expose the Ad blockers settings shortcut." }
+                        }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Open Samsung Ad blocker settings")
+                        }
+                        if (samsungSettingsStatus.isNotBlank()) Text(samsungSettingsStatus, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 Spacer(Modifier.weight(1f))
