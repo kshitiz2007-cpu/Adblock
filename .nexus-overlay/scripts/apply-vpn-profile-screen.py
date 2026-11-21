@@ -61,7 +61,7 @@ permission_lines = [
 ]
 for permission_line in permission_lines:
     if permission_line not in manifest_src:
-        manifest_src = manifest_src.replace('<application', permission_line + "\\n\\n    <application", 1)
+        manifest_src = manifest_src.replace('<application', permission_line + "\n\n    <application", 1)
 
 service_decl = '''        <service
             android:name=".ui.NexusVpnService"
@@ -84,7 +84,7 @@ if service_decl not in manifest_src:
     end_idx = manifest_src.find(close_anchor, idx)
     if end_idx < 0:
         raise SystemExit("Manifest application closing anchor not found.")
-    manifest_src = manifest_src[:end_idx] + service_decl + "\\n" + manifest_src[end_idx:]
+    manifest_src = manifest_src[:end_idx] + service_decl + "\n" + manifest_src[end_idx:]
 manifest.write_text(manifest_src)
 
 print("NEXUS VPN profile screen and service scaffold applied")
