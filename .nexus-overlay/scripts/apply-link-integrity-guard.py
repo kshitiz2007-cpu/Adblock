@@ -59,6 +59,15 @@ replacement = r'''    // NEXUS Link Integrity Guard v3: warn before opening obvi
         return false
     }
 
+    // Preserve Orbit's file-download URL helper, which was adjacent to the
+    // navigation callback in upstream and must survive the overlay replacement.
+    private fun isFileUrl(uri: android.net.Uri): Boolean {
+        val seg = uri.lastPathSegment ?: return false
+        val dot = seg.lastIndexOf('.')
+        if (dot < 0) return false
+        return seg.substring(dot + 1).lowercase() in FILE_EXTENSIONS
+    }
+
 '''
 source = source[:start] + replacement + source[end:]
 target.write_text(source)
