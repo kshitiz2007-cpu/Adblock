@@ -69,6 +69,52 @@ jobs:
           # ShieldSheet status and icon accents follow the NEXUS emerald palette.
           sed -i 's/#16A34A/#39D98A/g; s/#2563EB/#39D98A/g; s/#EA580C/#FFB454/g' app/src/main/java/com/orbit/browser/ui/ShieldSheet.kt
 
+      - name: Apply NEXUS blocked-image placeholder and recovery-safe response
+        working-directory: orbit-upstream
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/java/com/orbit/browser/browser/OrbitWebViewClient.kt")
+          s = p.read_text()
+          old = """        /** Görsel engellemeleri için ortak 1x1 saydam GIF yanıtı. */
+        private val GIF_1X1 = byteArrayOf(
+            0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00,
+            0x80.toByte(), 0x00, 0x00, 0xff.toByte(), 0xff.toByte(), 0xff.toByte(),
+            0x00, 0x00, 0x00, 0x21.toByte(), 0xf9.toByte(), 0x04, 0x01, 0x00,
+            0x00, 0x00, 0x00, 0x2c, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+            0x01, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3b
+        )
+"""
+          new = """        /** NEXUS branded SVG placeholder for ad-rule-blocked image resources. */
+        private val NEXUS_BLOCKED_IMAGE = ("""<svg xmlns="http://www.w3.org/2000/svg" width="320" height="90" viewBox="0 0 320 90"><rect width="320" height="90" rx="12" fill="#06291D"/><path d="M26 18L46 8 66 18V42L46 58 26 42Z" fill="none" stroke="#39D98A" stroke-width="3"/><path d="M38 27h8v8h8v8h-8v-8h-8z" fill="#39D98A"/><text x="82" y="38" font-family="sans-serif" font-size="18" font-weight="700" fill="#39D98A">NEXUS</text><text x="82" y="59" font-family="sans-serif" font-size="12" fill="#C4E8D5">AD BLOCKED · PRIVACY PROTECTED</text></svg>""").toByteArray(Charsets.UTF_8)
+"""
+          if old not in s:
+              raise SystemExit("placeholder source pattern not found; fail safely")
+          s = s.replace(old, new)
+          old2 = """        val BLOCKED_IMAGE: WebResourceResponse
+            get() = WebResourceResponse(
+                "image/gif",
+                "utf-8",
+                200,
+                "OK",
+                IMAGE_HEADERS,
+                GIF_1X1.inputStream()
+            )
+"""
+          new2 = """        val BLOCKED_IMAGE: WebResourceResponse
+            get() = WebResourceResponse(
+                "image/svg+xml",
+                "utf-8",
+                200,
+                "OK",
+                IMAGE_HEADERS,
+                NEXUS_BLOCKED_IMAGE.inputStream()
+            )
+"""
+          if old2 not in s:
+              raise SystemExit("blocked image response pattern not found; fail safely")
+          p.write_text(s.replace(old2, new2))
+          PY
       - name: Print build diagnostics
         run: |
           java -version
