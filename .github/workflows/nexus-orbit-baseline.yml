@@ -1,0 +1,63 @@
+name: NEXUS Browser - Orbit baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      nexus_branch:
+        description: NEXUS branch context (Orbit source is cloned separately)
+        required: true
+        default: nexus
+        type: choice
+        options:
+          - nexus
+          - main
+
+permissions:
+  contents: read
+
+jobs:
+  orbit:
+    name: Build Orbit browser APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout selected NEXUS branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.nexus_branch }}
+
+      - name: Clone Orbit upstream browser source
+        run: git clone --depth 1 https://github.com/egeeuzun/orbit.git orbit-upstream
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Print build diagnostics
+        run: |
+          java -version
+          echo "NEXUS branch context: ${{ inputs.nexus_branch }}"
+          echo "Orbit source: https://github.com/egeeuzun/orbit.git"
+
+      - name: Build Orbit debug APK
+        working-directory: orbit-upstream
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload Orbit APK artifact (not NEXUS AdBlock)
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-orbit-baseline
+          path: orbit-upstream/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
