@@ -48,6 +48,8 @@ jobs:
         run: |
           cp -r .nexus-overlay/app/src/main/res/drawable/. orbit-upstream/app/src/main/res/drawable/
           cp -r .nexus-overlay/app/src/main/res/layout/. orbit-upstream/app/src/main/res/layout/
+          cp .nexus-overlay/app/src/main/res/layout/dialog_shield.xml orbit-upstream/app/src/main/res/layout/dialog_shield.xml
+          cp .nexus-overlay/app/src/main/res/drawable/bg_nexus_shield_card.xml orbit-upstream/app/src/main/res/drawable/
           mkdir -p orbit-upstream/app/src/main/res/mipmap-anydpi-v26 orbit-upstream/app/src/main/res/values
           cp .nexus-overlay/app/src/main/res/mipmap-anydpi-v26/ic_launcher_nexus.xml orbit-upstream/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
           cp .nexus-overlay/app/src/main/res/mipmap-anydpi-v26/ic_launcher_nexus.xml orbit-upstream/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
