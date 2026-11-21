@@ -21,7 +21,9 @@ class FilterRuleEngineTest {
     }
 
     @Test fun parsesHostsFile() {
-        val rules = FilterRuleEngine.parseHostsOrDomainList("127.0.0.1 ads.test\\n0.0.0.0 tracker.test\\n# comment")
+        val rules = FilterRuleEngine.parseHostsOrDomainList("""127.0.0.1 ads.test
+0.0.0.0 tracker.test
+# comment""")
         assertEquals(2, rules.size)
         assertEquals("ads.test", rules[0].domain)
     }
