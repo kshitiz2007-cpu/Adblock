@@ -49,7 +49,7 @@ class VpnActivity : AppCompatActivity() {
             setPadding(dp(20), dp(24), dp(20), dp(24))
             gravity = Gravity.CENTER_HORIZONTAL
         }
-        root.addView(TextView(this).apply { text = "NEXUS VPN"; textSize = 28f; setTextColor(0xFF10231D.toInt() })
+        root.addView(TextView(this).apply { text = "NEXUS VPN"; textSize = 28f; setTextColor(0xFF10231D.toInt()) })
         root.addView(TextView(this).apply { text = "OpenVPN profiles"; textSize = 16f; setPadding(0, dp(6), 0, dp(18)) })
         status = TextView(this).apply { text = "VPN tunnel is not connected."; textSize = 15f; setPadding(dp(12), dp(12), dp(12), dp(12)) }
         root.addView(status)
