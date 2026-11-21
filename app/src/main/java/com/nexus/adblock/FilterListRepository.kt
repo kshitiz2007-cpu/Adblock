@@ -10,7 +10,7 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** Downloads ABP-compatible lists and replaces the local filter file after a successful fetch. */
+/** Downloads ABP-compatible lists and atomically replaces the local filter file. */
 object FilterListRepository {
     data class Source(val name: String, val url: String)
     val sources = listOf(
@@ -25,22 +25,21 @@ object FilterListRepository {
         "||google-analytics.com^", "||adservice.google.com^", "||adnxs.com^",
         "||ads.yahoo.com^", "||adserver.com^", "||advertising.com^",
         "||taboola.com^", "||outbrain.com^", "||pixel.facebook.com^", "||amazon-adsystem.com^"
-    ).joinToString("\\n", postfix = "\\n")
+    ).joinToString(System.lineSeparator(), postfix = System.lineSeparator())
     data class UpdateResult(val lists: Int, val ruleCount: Int, val sizeBytes: Int)
-
     suspend fun update(context: Context): UpdateResult = withContext(Dispatchers.IO) {
         val target = File(context.filesDir, FILE_NAME)
         val downloaded = mutableListOf<String>()
         var success = 0
         for (source in sources) {
-            val text = runCatching { download(source.url) }.getOrNull()
-            if (!text.isNullOrBlank()) { downloaded += "! Source: ${source.name}\\n$text"; success++ }
+            val body = runCatching { download(source.url) }.getOrNull()
+            if (!body.isNullOrBlank()) { downloaded += "! Source: " + source.name + System.lineSeparator() + body; success++ }
         }
         if (success == 0) {
             if (!target.exists()) target.writeText(defaultRules)
             return@withContext UpdateResult(0, countRules(target.readText()), target.length().toInt())
         }
-        val merged = (listOf(defaultRules) + downloaded).joinToString("\\n")
+        val merged = (listOf(defaultRules) + downloaded).joinToString(System.lineSeparator())
         val temp = File(context.filesDir, FILE_NAME + ".tmp")
         temp.writeText(merged)
         if (!temp.renameTo(target)) { target.writeText(merged); temp.delete() }
@@ -52,13 +51,13 @@ object FilterListRepository {
         UpdateResult(success, countRules(merged), merged.toByteArray().size)
     }
     private fun download(url: String): String {
-        val c = URL(url).openConnection() as HttpURLConnection
-        c.connectTimeout = 15000; c.readTimeout = 30000; c.requestMethod = "GET"
-        c.setRequestProperty("User-Agent", "NEXUS-AdBlock/0.1")
+        val connection = URL(url).openConnection() as HttpURLConnection
+        connection.connectTimeout = 15000; connection.readTimeout = 30000; connection.requestMethod = "GET"
+        connection.setRequestProperty("User-Agent", "NEXUS-AdBlock/0.1")
         try {
-            if (c.responseCode !in 200..299) error("HTTP ${c.responseCode}")
-            return BufferedReader(c.inputStream.reader(Charsets.UTF_8)).use { it.readText() }
-        } finally { c.disconnect() }
+            if (connection.responseCode !in 200..299) error("HTTP " + connection.responseCode)
+            return BufferedReader(connection.inputStream.reader(Charsets.UTF_8)).use { it.readText() }
+        } finally { connection.disconnect() }
     }
     private fun countRules(text: String) = text.lineSequence().count {
         it.isNotBlank() && !it.trim().startsWith("!") && !it.trim().startsWith("#")
