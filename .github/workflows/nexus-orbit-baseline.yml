@@ -1,6 +1,12 @@
 name: NEXUS Browser - Orbit baseline
 
 on:
+  push:
+    branches:
+      - nexus
+    paths:
+      - '.nexus-overlay/**'
+      - '.github/workflows/nexus-orbit-baseline.yml'
   workflow_dispatch:
     inputs:
       nexus_branch:
