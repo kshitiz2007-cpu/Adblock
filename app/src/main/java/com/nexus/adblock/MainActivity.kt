@@ -37,13 +37,13 @@ private fun NexusDashboard() {
     var listCount by remember { mutableIntStateOf(0) }
     var ruleCount by remember { mutableIntStateOf(0) }
     var samsungSettingsStatus by remember { mutableStateOf("") }
+    val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) {
         val prefs = context.getSharedPreferences("nexus_filters", android.content.Context.MODE_PRIVATE)
         listCount = prefs.getInt("active_lists", 0)
         ruleCount = prefs.getInt("rule_count", 0)
     }
     val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
     MaterialTheme(colorScheme = darkColorScheme(primary = Mint, background = Ink, surface = Panel)) {
         Surface(color = Ink, modifier = Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
