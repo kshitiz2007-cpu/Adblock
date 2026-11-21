@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:gravity="center_horizontal" android:orientation="vertical" android:paddingTop="10dp" android:paddingBottom="10dp">
+<FrameLayout android:layout_width="56dp" android:layout_height="62dp">
+<TextView android:id="@+id/shortcutInitial" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/bg_nexus_teardrop" android:gravity="center" android:textColor="#E8FFF2" android:textSize="18sp" android:textStyle="bold"/>
+<ImageView android:id="@+id/shortcutIcon" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/bg_nexus_teardrop" android:contentDescription="@null" android:padding="13dp" android:scaleType="fitCenter" android:visibility="gone"/>
+</FrameLayout>
+<TextView android:id="@+id/shortcutLabel" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:paddingStart="2dp" android:paddingEnd="2dp" android:textColor="#E3FFF0" android:textSize="11sp"/>
+</LinearLayout>
