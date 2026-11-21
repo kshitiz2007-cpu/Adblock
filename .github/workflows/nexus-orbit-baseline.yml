@@ -65,10 +65,9 @@ jobs:
           sed -i 's/<string name="app_name">Orbit<\/string>/<string name="app_name">NEXUS Browser<\/string>/' app/src/main/res/values/strings.xml
           sed -i 's/#2563EB/#16A34A/g; s/#60A5FA/#4ADE80/g' app/src/main/res/values/colors.xml
 
-      - name: Apply NEXUS Link Integrity Guard
-        run: |
-          python3 .nexus-overlay/scripts/apply-link-integrity-guard.py
+      - name: Apply NEXUS Link Integrity Engine v1
         working-directory: orbit-upstream
+        run: python3 ../.nexus-overlay/scripts/apply-link-integrity-guard.py
 
       - name: Build NEXUS Browser debug APK
         working-directory: orbit-upstream
