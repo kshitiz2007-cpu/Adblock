@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       nexus_branch:
-        description: NEXUS branch context (Orbit source is cloned separately)
+        description: NEXUS branch context
         required: true
         default: nexus
         type: choice
@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   orbit:
-    name: Build Orbit browser APK
+    name: Build NEXUS Browser APK
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -44,20 +44,26 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Apply initial NEXUS branding overlay
+        working-directory: orbit-upstream
+        run: |
+          sed -i 's/<string name="app_name">Orbit<\/string>/<string name="app_name">NEXUS Browser<\/string>/' app/src/main/res/values/strings.xml
+          sed -i 's/#2563EB/#16A34A/g; s/#60A5FA/#4ADE80/g' app/src/main/res/values/colors.xml
+
       - name: Print build diagnostics
         run: |
           java -version
           echo "NEXUS branch context: ${{ inputs.nexus_branch }}"
           echo "Orbit source: https://github.com/egeeuzun/orbit.git"
 
-      - name: Build Orbit debug APK
+      - name: Build NEXUS Browser debug APK
         working-directory: orbit-upstream
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Upload Orbit APK artifact (not NEXUS AdBlock)
+      - name: Upload NEXUS Browser APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-orbit-baseline
+          name: NEXUS-Browser-debug-apk
           path: orbit-upstream/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
