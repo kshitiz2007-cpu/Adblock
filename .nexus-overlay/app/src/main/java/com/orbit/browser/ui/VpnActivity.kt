@@ -21,6 +21,10 @@ import de.blinkt.openvpn.core.OpenVPNService
 import de.blinkt.openvpn.core.ProfileManager
 import de.blinkt.openvpn.core.VPNLaunchHelper
 import de.blinkt.openvpn.core.VpnStatus
+import android.util.Base64
+import androidx.appcompat.app.AlertDialog
+import java.net.HttpURLConnection
+import java.net.URL
 import java.io.StringReader
 
 /** NEXUS OpenVPN client. Connected is shown only when the native engine reports it. */
@@ -33,6 +37,15 @@ class VpnActivity : AppCompatActivity() {
     private lateinit var keyPasswordInput: EditText
 
     private val prefs by lazy { getSharedPreferences("nexus_vpn_profiles", MODE_PRIVATE) }
+
+    private data class VpnGateServer(
+        val host: String,
+        val ip: String,
+        val country: String,
+        val pingMs: Long,
+        val score: Long,
+        val encodedConfig: String
+    )
 
     private val profilePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) importProfile(uri)
@@ -117,6 +130,10 @@ class VpnActivity : AppCompatActivity() {
         }
         root.addView(profileInfo)
         root.addView(Button(this).apply {
+            text = "Find free VPN Gate servers"
+            setOnClickListener { fetchVpnGateServers() }
+        })
+        root.addView(Button(this).apply {
             text = "Import .ovpn profile"
             setOnClickListener {
                 profilePicker.launch(arrayOf("application/x-openvpn-profile", "application/octet-stream", "text/plain", "*/*"))
@@ -162,35 +179,154 @@ class VpnActivity : AppCompatActivity() {
             val contents = contentResolver.openInputStream(uri)
                 ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
                 ?: throw IllegalArgumentException("Unable to read the selected profile")
-            require(contents.toByteArray(Charsets.UTF_8).size <= 2 * 1024 * 1024) { "Profile exceeds 2 MiB" }
-            require(contents.lineSequence().any {
-                val line = it.trim().lowercase()
-                line == "client" || line == "pull" || line == "tls-client"
-            }) { "A client-mode OpenVPN profile is required" }
-            val parser = ConfigParser()
-            parser.parseConfig(StringReader(contents))
-            val profile = parser.convertProfile()
-            profile.mName = queryDisplayName(uri).ifBlank { "NEXUS imported profile" }.take(120)
-
-            val manager = ProfileManager.getInstance(applicationContext)
-            val oldId = prefs.getString(KEY_PROFILE_UUID, null)
-            if (oldId != null) {
-                ProfileManager.get(applicationContext, oldId)?.let { old ->
-                    if (old.getUUIDString() != profile.getUUIDString()) manager.removeProfile(applicationContext, old)
-                }
-            }
-            manager.addProfile(profile)
-            ProfileManager.saveProfile(applicationContext, profile)
-            manager.saveProfileList(applicationContext)
-            prefs.edit()
-                .putString(KEY_PROFILE_UUID, profile.getUUIDString())
-                .putString(KEY_PROFILE_NAME, profile.mName)
-                .apply()
-            status.text = "Profile parsed and saved in OpenVPN profile storage. Not connected."
-            updateProfile()
+            saveParsedProfile(contents, queryDisplayName(uri).ifBlank { "NEXUS imported profile" }, false)
         } catch (error: Exception) {
             status.text = "Profile import failed: ${error.message ?: error.javaClass.simpleName}"
         }
+    }
+
+    private fun fetchVpnGateServers() {
+        status.text = "Fetching current VPN Gate volunteer relays…"
+        Thread {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = (URL("https://www.vpngate.net/api/iphone/").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 15000
+                    readTimeout = 20000
+                    setRequestProperty("User-Agent", "NEXUS-Browser-OpenVPN")
+                }
+                check(connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    "VPN Gate API returned HTTP " + connection.responseCode
+                }
+                val csv = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+                require(csv.length <= 25 * 1024 * 1024) { "VPN Gate response is too large" }
+
+                val servers = csv.lineSequence().drop(2).mapNotNull { line ->
+                    val fields = parseCsvLine(line)
+                    if (fields.size < 15 || fields[14].isBlank()) return@mapNotNull null
+                    val score = fields[2].toLongOrNull() ?: 0L
+                    val ping = fields[3].toLongOrNull() ?: -1L
+                    val encoded = fields[14].trim().trim('"')
+                    if (fields[0].isBlank() || fields[1].isBlank() || encoded.length < 100) return@mapNotNull null
+                    VpnGateServer(
+                        host = fields[0],
+                        ip = fields[1],
+                        country = fields[5].ifBlank { "Unknown" },
+                        pingMs = ping,
+                        score = score,
+                        encodedConfig = encoded
+                    )
+                }.sortedByDescending { it.score }.take(20).toList()
+
+                runOnUiThread {
+                    if (servers.isEmpty()) {
+                        status.text = "No current OpenVPN relays were returned by VPN Gate."
+                    } else {
+                        showVpnGateServers(servers)
+                    }
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    status.text = "Could not fetch free relays: ${error.message ?: error.javaClass.simpleName}"
+                }
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
+    }
+
+    private fun parseCsvLine(line: String): List<String> {
+        val fields = ArrayList<String>()
+        val value = StringBuilder()
+        var quoted = false
+        var index = 0
+        while (index < line.length) {
+            val ch = line[index]
+            when {
+                ch == '"' && quoted && index + 1 < line.length && line[index + 1] == '"' -> {
+                    value.append('"')
+                    index++
+                }
+                ch == '"' -> quoted = !quoted
+                ch == ',' && !quoted -> {
+                    fields.add(value.toString())
+                    value.setLength(0)
+                }
+                else -> value.append(ch)
+            }
+            index++
+        }
+        fields.add(value.toString())
+        return fields
+    }
+
+    private fun showVpnGateServers(servers: List<VpnGateServer>) {
+        val labels = servers.map { server ->
+            val ping = if (server.pingMs >= 0) server.pingMs.toString() + " ms" else "ping n/a"
+            server.country + " — " + server.ip + " · " + ping
+        }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("Free VPN Gate relays")
+            .setMessage(
+                "These are public volunteer-operated servers, not NEXUS-operated VPN endpoints. " +
+                "Operators may observe connection metadata. Avoid banking, private accounts, or sensitive traffic. " +
+                "Use HTTPS and review the relay profile before connecting."
+            )
+            .setItems(labels) { _, index ->
+                try {
+                    val selected = servers[index]
+                    val bytes = Base64.decode(selected.encodedConfig, Base64.DEFAULT)
+                    val config = bytes.toString(Charsets.UTF_8)
+                    saveParsedProfile(
+                        config,
+                        "VPN Gate — " + selected.country + " (" + selected.host + ")",
+                        true
+                    )
+                    requestVpnPermissionAndConnect()
+                } catch (error: Exception) {
+                    status.text = "Could not import selected relay: ${error.message ?: error.javaClass.simpleName}"
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun saveParsedProfile(contents: String, name: String, vpnGate: Boolean) {
+        require(contents.toByteArray(Charsets.UTF_8).size <= 2 * 1024 * 1024) { "Profile exceeds 2 MiB" }
+        require(contents.lineSequence().any {
+            val line = it.trim().lowercase()
+            line == "client" || line == "pull" || line == "tls-client"
+        }) { "A client-mode OpenVPN profile is required" }
+
+        val parser = ConfigParser()
+        parser.parseConfig(StringReader(contents))
+        val profile = parser.convertProfile()
+        profile.mName = name.take(120)
+        if (vpnGate) {
+            profile.mUsername = "vpn"
+            profile.mPassword = "vpn"
+        }
+
+        val manager = ProfileManager.getInstance(applicationContext)
+        val oldId = prefs.getString(KEY_PROFILE_UUID, null)
+        if (oldId != null) {
+            ProfileManager.get(applicationContext, oldId)?.let { old ->
+                if (old.getUUIDString() != profile.getUUIDString()) {
+                    manager.removeProfile(applicationContext, old)
+                }
+            }
+        }
+        manager.addProfile(profile)
+        ProfileManager.saveProfile(applicationContext, profile)
+        manager.saveProfileList(applicationContext)
+        prefs.edit()
+            .putString(KEY_PROFILE_UUID, profile.getUUIDString())
+            .putString(KEY_PROFILE_NAME, profile.mName)
+            .apply()
+        status.text = "Profile saved in OpenVPN engine storage. Not connected yet."
+        updateProfile()
     }
 
     private fun queryDisplayName(uri: Uri): String {
