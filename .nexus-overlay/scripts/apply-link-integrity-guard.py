@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
-"""Apply NEXUS Link Integrity Engine v1 to Orbit's WebView navigation client."""
+"""Apply a conservative NEXUS link integrity guard to Orbit's navigation client."""
 from pathlib import Path
 
 target = Path("app/src/main/java/com/orbit/browser/browser/OrbitWebViewClient.kt")
 source = target.read_text()
-
 anchor = "    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {"
 if anchor not in source:
     raise SystemExit("Navigation callback anchor not found; refusing to patch")
-if "NEXUS Link Integrity Engine v1" in source:
-    print("Link Integrity Engine v1 already applied")
+if "NEXUS Link Integrity Guard v2" in source:
+    print("Link Integrity Guard v2 already applied")
     raise SystemExit(0)
 
-replacement = """    // NEXUS Link Integrity Engine v1: detect direct image/emoji destinations
-    // commonly used as misleading download-button targets. Navigation is never
-    // silently redirected; users can cancel or explicitly continue.
+replacement = r"""    // NEXUS Link Integrity Guard v2: flag direct image-resource navigations
+    // that commonly masquerade as download links. Users may explicitly proceed.
     private var nexusAllowOnceUrl: String? = null
     private val nexusRecentNavigations = ArrayDeque<String>()
 
@@ -42,11 +40,11 @@ replacement = """    // NEXUS Link Integrity Engine v1: detect direct image/emoj
             return false
         }
         if (request.isForMainFrame && nexusImageDestination(uri)) {
-            val chain = nexusRecentNavigations.takeLast(4).joinToString("\\n\\u2192 ")
-            val details = if (chain.isEmpty()) url else chain + "\\n\\u2192 " + url
-            android.app.AlertDialog.Builder(context)
+            val chain = nexusRecentNavigations.takeLast(4).joinToString("\n→ ")
+            val details = if (chain.isEmpty()) url else chain + "\n→ " + url
+            android.app.AlertDialog.Builder(view.context)
                 .setTitle("NEXUS Link Integrity")
-                .setMessage("This destination is an image/emoji resource, not a download page.\\n\\nDestination:\\n$url\\n\\nRecent navigation:\\n$details")
+                .setMessage("This destination looks like an image/emoji resource, not a download page.\n\nDestination:\n$url\n\nRecent navigation:\n$details")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Open anyway") { _, _ ->
                     nexusAllowOnceUrl = url
@@ -57,7 +55,6 @@ replacement = """    // NEXUS Link Integrity Engine v1: detect direct image/emoj
         }
         if (request.isForMainFrame) nexusRecordNavigation(url)
         val scheme = uri.scheme?.lowercase()
-        // Non-web schemes are handed to the existing external-intent handler.
         if (scheme != null && scheme != "http" && scheme != "https" && scheme != "about") {
             return callbacks.onExternalIntent(uri)
         }
@@ -66,4 +63,4 @@ replacement = """    // NEXUS Link Integrity Engine v1: detect direct image/emoj
 """
 source = source.replace(anchor, replacement, 1)
 target.write_text(source)
-print("NEXUS Link Integrity Engine v1 applied")
+print("NEXUS Link Integrity Guard v2 applied")
