@@ -35,7 +35,7 @@ private fun NexusDashboard() {
     var refreshing by remember { mutableStateOf(false) }
     var listCount by remember { mutableIntStateOf(0) }
     var ruleCount by remember { mutableIntStateOf(0) }
-    val scope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()\n    val context = androidx.compose.ui.platform.LocalContext.current
     MaterialTheme(colorScheme = darkColorScheme(primary = Mint, background = Ink, surface = Panel)) {
         Surface(color = Ink, modifier = Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -76,7 +76,7 @@ private fun NexusDashboard() {
                             refreshing = true
                             refreshStatus = "Downloading filter lists…"
                             scope.launch {
-                                val result = runCatching { FilterListRepository.update(this@NexusDashboardContext()) }
+                                val result = runCatching { FilterListRepository.update(context) }
                                 result.onSuccess {
                                     listCount = it.lists
                                     ruleCount = it.ruleCount
