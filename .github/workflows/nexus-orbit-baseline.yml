@@ -44,10 +44,14 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Apply NEXUS jungle homepage and teardrop shortcuts
+      - name: Apply NEXUS homepage, functional shortcuts and shield branding
         run: |
           cp -r .nexus-overlay/app/src/main/res/drawable/. orbit-upstream/app/src/main/res/drawable/
           cp -r .nexus-overlay/app/src/main/res/layout/. orbit-upstream/app/src/main/res/layout/
+          mkdir -p orbit-upstream/app/src/main/res/mipmap-anydpi-v26 orbit-upstream/app/src/main/res/values
+          cp .nexus-overlay/app/src/main/res/mipmap-anydpi-v26/ic_launcher_nexus.xml orbit-upstream/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          cp .nexus-overlay/app/src/main/res/mipmap-anydpi-v26/ic_launcher_nexus.xml orbit-upstream/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+          cp .nexus-overlay/app/src/main/res/values/nexus_icon_colors.xml orbit-upstream/app/src/main/res/values/
 
       - name: Apply initial NEXUS branding overlay
         working-directory: orbit-upstream
