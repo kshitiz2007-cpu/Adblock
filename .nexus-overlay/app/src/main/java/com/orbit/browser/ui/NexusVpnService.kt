@@ -8,7 +8,6 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.net.VpnService
-import androidx.core.app.NotificationCompat
 
 /**
  * NEXUS VPN lifecycle scaffold.
@@ -48,7 +47,7 @@ class NexusVpnService : VpnService() {
             this, 0, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        return (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(this, CHANNEL_ID) else Notification.Builder(this))
             .setSmallIcon(android.R.drawable.stat_sys_warning)
             .setContentTitle("NEXUS VPN setup")
             .setContentText("OpenVPN engine integration is in progress")
