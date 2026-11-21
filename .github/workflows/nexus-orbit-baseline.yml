@@ -69,10 +69,6 @@ jobs:
         working-directory: orbit-upstream
         run: python3 ../.nexus-overlay/scripts/apply-link-integrity-guard.py
 
-      - name: Prepare WireGuard tunnel library dependency
-        working-directory: orbit-upstream
-        run: python3 ../.nexus-overlay/scripts/prepare-wireguard-dependency.py
-
       - name: Build NEXUS Browser debug APK
         working-directory: orbit-upstream
         run: ./gradlew assembleDebug --no-daemon --stacktrace
