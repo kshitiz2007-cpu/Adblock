@@ -69,6 +69,10 @@ jobs:
         working-directory: orbit-upstream
         run: python3 ../.nexus-overlay/scripts/apply-link-integrity-guard.py
 
+      - name: Apply NEXUS VPN profile screen foundation
+        working-directory: orbit-upstream
+        run: python3 ../.nexus-overlay/scripts/apply-vpn-profile-screen.py
+
       - name: Build NEXUS Browser debug APK
         working-directory: orbit-upstream
         run: ./gradlew assembleDebug --no-daemon --stacktrace
